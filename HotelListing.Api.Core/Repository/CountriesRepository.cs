@@ -1,5 +1,8 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using HotelListing.Api.Core.Contracts;
+using HotelListing.Api.Core.Exceptions;
+using HotelListing.Api.Core.Models.Country;
 using HotelListing.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,17 +11,27 @@ namespace HotelListing.Api.Core.Repository
     public class CountriesRepository : GenericRepository<Country>, ICountriesRepository
     {
         private readonly HotelListingDbContext _context;
+        private readonly IMapper _mapper;
 
         public CountriesRepository(HotelListingDbContext context, IMapper mapper) : base(context, mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
-        public async Task<Country> GetDetails(int id)
+        public async Task<CountryDto> GetDetails(int id)
         {
-            return await _context.Countries
+            var country = await _context.Countries
                 .Include(q => q.Hotels)
+                .ProjectTo<CountryDto>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (country is null)
+            {
+                throw new NotFoundException(nameof(GetDetails), id);
+            }
+
+            return country;
         }
     }
 }
